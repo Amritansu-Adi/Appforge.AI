@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Python
+ai-service/.venv/
+ai-service/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+ai-service/*.egg-info/
+ai-service/dist/
+ai-service/.pytest_cache/
+
+# Environment
+.env
+**/.env
+
+# Database & generated data
+data/
+server/generated/
+ai-service/generated/
+*.db
+*.db-shm
+*.db-wal
+
+# Build output
+client/dist/
+client/build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+
+# LangSmith / secrets
+*.pem
+
+# Project management docs (not part of codebase)
+project.md
+handover.md

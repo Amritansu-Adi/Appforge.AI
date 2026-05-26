@@ -1,0 +1,233 @@
+# AI Mock Data Reference — AppForge AI
+> **File:** `server/ai/models/llm.mock.js`
+> **Purpose:** Prateeksha uses this file during frontend/chain development to avoid burning Groq API quota and to work without real API keys. The mock `llm` object returns the exact JSON structures below for each chain type.
+> **Usage:** `import { llm } from "../models/llm.mock.js"` instead of real `llm.js`
+
+---
+
+## How the Mock LLM Works
+
+`llm.mock.js` exports a fake `llm` object with an `.invoke()` method. It inspects the prompt messages for a keyword to determine which mock payload to return, then wraps it in a `BaseMessage`-compatible object so it drops into any `RunnableSequence` without modification.
+
+```javascript
+// Usage in any chain — swap one import line:
+import { llm } from "../models/llm.mock.js";  // dev
+// import { llm } from "../models/llm.js";    // prod
+```
+
+---
+
+## Mock Response: `overviewChain`
+
+**Trigger keyword in prompt:** `"overview"` or `"idea"`
+**Returned as:** Raw JSON string (the `content` field of the mock message)
+
+```json
+{
+  "appName": "TaskFlow Pro",
+  "oneLiner": "A collaborative task management app for small teams with deadline tracking and progress visualization.",
+  "targetUsers": "Small business owners and team leads managing 2-10 person teams",
+  "coreFeatures": [
+    "Create and assign tasks with due dates",
+    "Kanban board with drag-and-drop",
+    "Team member invitation via email",
+    "Progress dashboard with completion stats",
+    "Email notifications for overdue tasks"
+  ],
+  "complexity": "standard",
+  "techNotes": "Needs user roles (admin/member), real-time-like updates via polling acceptable, no external integrations required",
+  "dataEntities": ["User", "Team", "Task", "Comment"]
+}
+```
+
+---
+
+## Mock Response: `questionsChain`
+
+**Trigger keyword in prompt:** `"questions"` or `"questionCount"`
+**Returned as:** Raw JSON array string
+
+```json
+[
+  {
+    "question_id": "q1",
+    "category": "Users & Roles",
+    "question": "Will users have different permission levels (e.g. admin vs regular member)?",
+    "type": "choice",
+    "options": ["Yes, admin and member roles", "Yes, three or more roles", "No, everyone has same access"]
+  },
+  {
+    "question_id": "q2",
+    "category": "Users & Roles",
+    "question": "How will new users join a team — by invitation only or open registration?",
+    "type": "choice",
+    "options": ["Invitation only (admin sends invite)", "Open registration with team code", "Both options available"]
+  },
+  {
+    "question_id": "q3",
+    "category": "Core Data",
+    "question": "What information do you need to track for each task?",
+    "type": "text"
+  },
+  {
+    "question_id": "q4",
+    "category": "Core Data",
+    "question": "Can a task be assigned to multiple team members, or just one person?",
+    "type": "choice",
+    "options": ["One assignee per task", "Multiple assignees allowed", "Optional — can be unassigned"]
+  },
+  {
+    "question_id": "q5",
+    "category": "Workflow",
+    "question": "What are the stages a task moves through? (e.g. To Do → In Progress → Done)",
+    "type": "text"
+  },
+  {
+    "question_id": "q6",
+    "category": "Workflow",
+    "question": "Can tasks have sub-tasks or checklists inside them?",
+    "type": "choice",
+    "options": ["Yes, sub-tasks", "Yes, checklist items", "No, keep tasks simple"]
+  },
+  {
+    "question_id": "q7",
+    "category": "UI/UX",
+    "question": "Which view should be the default when a user opens the app?",
+    "type": "choice",
+    "options": ["Kanban board", "List/table view", "Dashboard with stats"]
+  },
+  {
+    "question_id": "q8",
+    "category": "UI/UX",
+    "question": "Should the app support dark mode?",
+    "type": "choice",
+    "options": ["Yes", "No", "Let the user choose"]
+  },
+  {
+    "question_id": "q9",
+    "category": "Notifications",
+    "question": "What events should trigger a notification to the user?",
+    "type": "text"
+  },
+  {
+    "question_id": "q10",
+    "category": "Notifications",
+    "question": "Where should notifications be delivered?",
+    "type": "choice",
+    "options": ["In-app only", "Email only", "Both in-app and email"]
+  },
+  {
+    "question_id": "q11",
+    "category": "Integrations",
+    "question": "Does the app need to connect to any external services (e.g. Slack, Google Calendar)?",
+    "type": "choice",
+    "options": ["No external integrations", "Slack notifications", "Google Calendar sync", "Other"]
+  },
+  {
+    "question_id": "q12",
+    "category": "Core Data",
+    "question": "Should tasks support file attachments or comments?",
+    "type": "choice",
+    "options": ["Comments only", "File attachments only", "Both", "Neither"]
+  }
+]
+```
+
+> **Note for Prateeksha:** The mock always returns 12 questions (standard complexity). To test simple (8) or complex (16), manually slice or extend this array in your test script.
+
+---
+
+## Mock Response: `generateDiagrams` (diagramChain)
+
+**Trigger keyword in prompt:** `"diagram"` or `"mermaid"`
+**Returned as:** Raw JSON object string
+
+```json
+{
+  "useCaseDiagram": "graph TD\n  Actor_User([User])\n  Actor_Admin([Admin])\n  UC1[Create Task]\n  UC2[Assign Task]\n  UC3[Move Task on Board]\n  UC4[Comment on Task]\n  UC5[Invite Team Member]\n  UC6[View Dashboard]\n  Actor_User --> UC1\n  Actor_User --> UC3\n  Actor_User --> UC4\n  Actor_User --> UC6\n  Actor_Admin --> UC1\n  Actor_Admin --> UC2\n  Actor_Admin --> UC5\n  Actor_Admin --> UC6",
+
+  "architectureDiagram": "graph TD\n  subgraph CLIENT[React Client :5173]\n    Pages[Pages: Board, Dashboard, Tasks]\n    RQ[React Query]\n  end\n  subgraph SERVER[Express Server :3001]\n    AuthRoute[/api/auth]\n    TaskRoute[/api/tasks]\n    TeamRoute[/api/teams]\n    DB[(SQLite)]\n  end\n  Pages --> RQ --> AuthRoute\n  Pages --> RQ --> TaskRoute\n  Pages --> RQ --> TeamRoute\n  AuthRoute --> DB\n  TaskRoute --> DB\n  TeamRoute --> DB",
+
+  "erDiagram": "erDiagram\n  USER {\n    string id PK\n    string email\n    string password_hash\n    string role\n    datetime created_at\n  }\n  TEAM {\n    string id PK\n    string name\n    string owner_id FK\n  }\n  TASK {\n    int id PK\n    string title\n    string status\n    string assignee_id FK\n    string team_id FK\n    datetime due_date\n  }\n  COMMENT {\n    int id PK\n    int task_id FK\n    string user_id FK\n    string body\n    datetime created_at\n  }\n  USER ||--o{ TASK : assigns\n  USER ||--o{ COMMENT : writes\n  TEAM ||--o{ TASK : contains\n  TASK ||--o{ COMMENT : has"
+}
+```
+
+---
+
+## Mock Response: `streamDoc` (documentationChain)
+
+**Trigger keyword in prompt:** `"srs"` | `"sdd"` | `"brief"`
+**Behaviour:** The mock calls `onToken()` once per sentence fragment (simulating streaming), then calls `onComplete()`.
+
+**Mock SRS token sequence (truncated — full output simulated):**
+```
+"# Software Requirements Specification\n"
+"## TaskFlow Pro\n\n"
+"### 1. Introduction\n"
+"TaskFlow Pro is a collaborative task management application..."
+"[... more tokens ...]"
+```
+
+**Mock SDD token sequence:**
+```
+"# Software Design Document\n"
+"## System Architecture\n\n"
+"The system follows a RESTful client-server architecture..."
+```
+
+**Mock Brief token sequence:**
+```
+"## App Brief: TaskFlow Pro\n\n"
+"**What it does:** Helps small teams manage tasks with a Kanban board...\n"
+```
+
+---
+
+## Mock Response: `runCodegenChain` (codegenChain)
+
+**Trigger keyword:** `"codegen"` or `"schema"` or `"route"`
+**Behaviour:** The mock calls `emit()` with fake step events, then returns a file array.
+
+**Mock emit sequence:**
+```javascript
+emit({ type:"step", step:"schema.sql", status:"generating", message:"Generating schema.sql..." })
+emit({ type:"step", step:"schema.sql", status:"validated", message:"schema.sql ready ✓" })
+emit({ type:"step", step:"server/routes/task.js", status:"generating", message:"Generating task.js..." })
+emit({ type:"step", step:"server/routes/task.js", status:"validated", message:"task.js ready ✓" })
+// ... one event pair per file
+emit({ type:"done", zipPath:"/generated/mock-session/app.zip" })
+```
+
+**Mock return value:**
+```json
+[
+  { "path": "server/db/schema.sql", "content": "CREATE TABLE users (...);\nCREATE TABLE tasks (...);", "source": "ai" },
+  { "path": "server/routes/task.js", "content": "import express from 'express';\nconst router = express.Router();\n// ...", "source": "ai" },
+  { "path": "client/src/pages/BoardPage.jsx", "content": "import React from 'react';\n// ...", "source": "ai" }
+]
+```
+
+---
+
+## Using the Mock in Test Scripts
+
+```javascript
+// server/ai/test/testOverview.js — example test structure Prateeksha should follow
+import { llm } from "../models/llm.mock.js";
+// Swap the import above for "../models/llm.js" to test against real Groq
+
+import { overviewChain } from "../chains/overviewChain.js";
+import { overviewParser } from "../parsers/overviewParser.js";
+
+const result = await overviewChain.invoke({
+  ideaText: "I want to build a task management app for small teams with kanban boards, deadlines, and email notifications for overdue tasks",
+  formatInstructions: overviewParser.getFormatInstructions(),
+});
+
+console.log("Overview result:", JSON.stringify(result, null, 2));
+// Expected: object matching OverviewOutput schema above
+```
+
+---
+
+*End of AI Mock Data Reference v1.0*

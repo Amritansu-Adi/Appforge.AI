@@ -1,0 +1,19 @@
+{
+  "name": "appforge-ai",
+  "version": "3.0.0",
+  "private": true,
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "dev": "npm run dev:all",
+    "dev:all": "concurrently -n CLIENT,SERVER,AI -c blue,green,magenta \"npm run dev --workspace=client\" \"npm run dev --workspace=server\" \"npm run dev:ai\"",
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:ai": "cd ai-service && uvicorn main:app --reload --port 8000",
+    "db:migrate": "npm run db:migrate --workspace=server",
+    "install:all": "npm install && pip install -r ai-service/requirements.txt",
+    "setup": "npm run install:all && npm run db:migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
