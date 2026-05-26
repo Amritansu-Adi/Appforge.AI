@@ -1,31 +1,40 @@
 -- ============================================================
--- AppForge AI — Full Database Schema
--- All CREATE TABLE statements are idempotent (IF NOT EXISTS)
+-- AppForge AI — Application Database Schema (appforge.db)
+-- Owned exclusively by: Node.js (better-sqlite3)
+-- NEVER touched by the Python AI service.
+--
+-- v4.0 Changes:
+--   - Removed langgraph_checkpoints and langgraph_writes tables.
+--     Python service uses its own separate data/langgraph.db file.
+--   - documents.file_path removed; replaced with docx_base64 (TEXT).
+--     Python returns .docx as base64 in JSON; Node.js stores and serves it.
+--
+-- All CREATE TABLE statements are idempotent (IF NOT EXISTS).
 -- Managed by: server/db/migrate.js
 -- ============================================================
 
 -- Table 1: users
 CREATE TABLE IF NOT EXISTS users (
-  id           TEXT     PRIMARY KEY,
-  email        TEXT     NOT NULL UNIQUE,
-  password_hash TEXT    NOT NULL,
-  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-  last_login   DATETIME
+  id            TEXT     PRIMARY KEY,
+  email         TEXT     NOT NULL UNIQUE,
+  password_hash TEXT     NOT NULL,
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_login    DATETIME
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Table 2: sessions
 CREATE TABLE IF NOT EXISTS sessions (
-  id           TEXT     PRIMARY KEY,
-  user_id      TEXT     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-  status       TEXT     NOT NULL DEFAULT 'idea'
-                        CHECK(status IN ('idea','overview','questions','diagrams','docs','codegen','complete')),
-  idea_text    TEXT,
+  id            TEXT     PRIMARY KEY,
+  user_id       TEXT     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  status        TEXT     NOT NULL DEFAULT 'idea'
+                         CHECK(status IN ('idea','overview','questions','diagrams','docs','codegen','complete')),
+  idea_text     TEXT,
   overview_json TEXT,
-  complexity   TEXT     CHECK(complexity IN ('simple','standard','complex')),
-  app_name     TEXT
+  complexity    TEXT     CHECK(complexity IN ('simple','standard','complex')),
+  app_name      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
@@ -63,13 +72,17 @@ CREATE TABLE IF NOT EXISTS diagrams (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_diagrams_session_type ON diagrams(session_id, diagram_type);
 
 -- Table 6: documents
+-- v4.0: docx_base64 replaces file_path.
+-- Python returns base64-encoded .docx in JSON response.
+-- Node.js stores base64 here and serves via Buffer.from(docx_base64, 'base64').
+-- brief doc_type has no docx (markdown only) — docx_base64 will be NULL for brief.
 CREATE TABLE IF NOT EXISTS documents (
-  id           INTEGER  PRIMARY KEY AUTOINCREMENT,
-  session_id   TEXT     NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  doc_type     TEXT     NOT NULL CHECK(doc_type IN ('srs','sdd','brief')),
-  file_path    TEXT,
+  id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+  session_id    TEXT     NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  doc_type      TEXT     NOT NULL CHECK(doc_type IN ('srs','sdd','brief')),
+  docx_base64   TEXT,
   markdown_text TEXT,
-  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Table 7: generated_files
@@ -82,27 +95,4 @@ CREATE TABLE IF NOT EXISTS generated_files (
                         CHECK(status IN ('pending','generating','validated','packaged','failed')),
   source       TEXT     NOT NULL CHECK(source IN ('ai','template')),
   created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Table 8: langgraph_checkpoints (managed by SqliteSaver — DO NOT write manually)
-CREATE TABLE IF NOT EXISTS langgraph_checkpoints (
-  thread_id             TEXT NOT NULL,
-  checkpoint_id         TEXT NOT NULL,
-  parent_checkpoint_id  TEXT,
-  type                  TEXT NOT NULL,
-  checkpoint            TEXT NOT NULL,
-  metadata              TEXT NOT NULL,
-  PRIMARY KEY (thread_id, checkpoint_id)
-);
-
--- Table 9: langgraph_writes (required by SqliteSaver alongside checkpoints)
-CREATE TABLE IF NOT EXISTS langgraph_writes (
-  thread_id      TEXT NOT NULL,
-  checkpoint_id  TEXT NOT NULL,
-  task_id        TEXT NOT NULL,
-  idx            INTEGER NOT NULL,
-  channel        TEXT NOT NULL,
-  type           TEXT,
-  value          TEXT,
-  PRIMARY KEY (thread_id, checkpoint_id, task_id, idx)
 );

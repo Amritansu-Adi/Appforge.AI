@@ -7,6 +7,11 @@ FastAPI entry point for the AppForge Python AI Service.
 - Only accepts requests from Node.js backend (X-Internal-Secret middleware)
 - All LangSmith tracing is activated here at startup
 
+v4.0 Changes:
+  - Version bumped to 4.0.0
+  - Router imports use updated module paths (routers package)
+  - Routers uncommented for registration (stub routers are safe to include)
+
 Start with:
     uvicorn main:app --reload --port 8000
 """
@@ -23,14 +28,11 @@ if os.environ.get("LANGSMITH_API_KEY"):
     os.environ["LANGCHAIN_PROJECT"] = os.environ.get("LANGSMITH_PROJECT", "appforge-dev")
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-
-# Routers — registered once all phase modules are implemented
-# from ai_service.routers import ai_router, codegen_router, docs_router
+from ai_service.routers import ai_router, docs_router, codegen_router
 
 app = FastAPI(
     title="AppForge AI Service",
-    version="3.0.0",
+    version="4.0.0",
     description="Internal Python AI microservice. Not exposed to browser.",
 )
 
@@ -53,13 +55,13 @@ async def verify_internal_secret(request: Request, call_next):
     return await call_next(request)
 
 
-# ── Register Routers (uncomment as phases are implemented) ──────────────
-# app.include_router(ai_router.router)      # Phase 2-4
-# app.include_router(docs_router.router)    # Phase 5
-# app.include_router(codegen_router.router) # Phase 6
+# ── Register Routers ─────────────────────────────────────────────────────
+app.include_router(ai_router.router)       # Phase 2.4-4.3: /internal/ai/*
+app.include_router(docs_router.router)     # Phase 5.2:     /internal/docs/stream/*
+app.include_router(codegen_router.router)  # Phase 6.2:     /internal/codegen/start
 
 
 @app.get("/health")
 def health():
     """Health check — called by Node.js on startup and by Render."""
-    return {"status": "ok", "service": "appforge-ai", "version": "3.0.0"}
+    return {"status": "ok", "service": "appforge-ai", "version": "4.0.0"}
