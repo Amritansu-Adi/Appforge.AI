@@ -1,79 +1,81 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import { rateLimit } from "express-rate-limit";
-import { runMigrations } from "./db/migrate.js";
+// server/index.js — v4.0.0 (Amritansu)
+// Phase 1.3: All 6 route stubs now active — authenticate wired inside each route file.
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
-// ─── Bootstrap DB ────────────────────────────────────────────
-await runMigrations();
+// Route imports
+import authRouter    from './routes/auth.js';
+import sessionRouter from './routes/session.js';
+import aiRouter      from './routes/ai.js';
+import answersRouter from './routes/answers.js';
+import diagramRouter from './routes/diagram.js';
+import docsRouter    from './routes/docs.js';
+import codegenRouter from './routes/codegen.js';
+
+// DB migration — runs idempotently on every startup
+import './db/migrate.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// ─── Global Middleware ────────────────────────────────────────
-app.use(
-  cors({
-    origin: process.env.NODE_ENV === "production"
-      ? "https://your-render-url.onrender.com"
-      : "http://localhost:5173",
-    credentials: true,
-  })
-);
-app.use(express.json({ limit: "2mb" }));
+// ─── Global Middleware ────────────────────────────────────────────────────────
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.CLIENT_ORIGIN
+    : 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(express.json());
 
-// Global rate limit — 200 req / 15 min per IP
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: "Too many requests, please slow down." },
-  })
-);
-
-// ─── Routes (stubs — filled per phase) ────────────────────────
-// Phase 1: Auth
-// import authRoutes from "./routes/auth.js";
-// app.use("/api/auth", authRoutes);
-
-// Phase 2+: Protected routes
-// import { authenticate } from "./middleware/authenticate.js";
-// app.use("/api/session", authenticate, sessionRoutes);
-// app.use("/api/ai",      authenticate, aiRoutes);       // aiRoutes → proxyToAI()
-// app.use("/api/answers", authenticate, answersRoutes);
-// app.use("/api/diagram", authenticate, diagramRoutes);
-// app.use("/api/docs",    authenticate, docsRoutes);
-// app.use("/api/codegen", authenticate, codegenRoutes);
-
-// ─── Health check ─────────────────────────────────────────────
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    version: "3.0.0",
-    env: process.env.NODE_ENV,
-    ai_service: process.env.AI_SERVICE_URL || "http://localhost:8000",
-  });
+// ─── Rate Limiters ───────────────────────────────────────────────────────────
+// Session creation: 10 per minute per user (Phase 7.2 test: 11th → 429)
+const sessionCreateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many sessions created. Please wait a minute.' },
 });
 
-// ─── 404 handler ─────────────────────────────────────────────
-app.use((_req, res) => {
-  res.status(404).json({ error: "Route not found" });
+// General API limiter: 200 requests/15min per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please slow down.' },
 });
 
-// ─── Global error handler ─────────────────────────────────────
-app.use((err, _req, res, _next) => {
-  console.error("[ERROR]", err.message, err.stack);
-  res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === "production"
-      ? "Internal server error"
-      : err.message,
-  });
+app.use('/api/', apiLimiter);
+
+// Apply session-create specific limiter
+app.use('/api/session/create', sessionCreateLimiter);
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+app.use('/api/auth',    authRouter);
+app.use('/api/session', sessionRouter);
+app.use('/api/ai',      aiRouter);
+app.use('/api/answers', answersRouter);
+app.use('/api/diagram', diagramRouter);
+app.use('/api/docs',    docsRouter);
+app.use('/api/codegen', codegenRouter);
+
+// ─── Health ───────────────────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', service: 'appforge-server', version: '4.0.0' });
 });
 
+// ─── Global Error Handler ────────────────────────────────────────────────────
+app.use((err, req, res, _next) => {
+  console.error('Unhandled error:', err.message);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// ─── Start ───────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`✅ AppForge Node.js server running on http://localhost:${PORT}`);
-  console.log(`   Environment : ${process.env.NODE_ENV || "development"}`);
-  console.log(`   DB Path     : ${process.env.DB_PATH || "./data/appforge.db"}`);
-  console.log(`   AI Service  : ${process.env.AI_SERVICE_URL || "http://localhost:8000"}`);
+  console.log(`AppForge server v4.0.0 running on port ${PORT}`);
 });
+
+export default app;
