@@ -4,7 +4,7 @@ import express from 'express';
 import { authenticate } from '../middleware/authenticate.js';
 import db from '../db/database.js';
 
-// const router = express.Router();
+const router = express.Router();
 
 // POST /api/answers/save
 // Upsert answer — INSERT OR REPLACE on UNIQUE(session_id, question_id)
