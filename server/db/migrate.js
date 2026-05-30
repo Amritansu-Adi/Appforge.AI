@@ -7,20 +7,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = path.join(__dirname, "schema.sql");
 
 export async function runMigrations() {
-  console.log("🗃️  Running database migrations...");
+  console.log("🗃️ Running database migrations...");
 
   const sql = fs.readFileSync(SCHEMA_PATH, "utf8");
 
-  // Split on semicolons, filter empty statements, execute each
-  const statements = sql
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith("--"));
-
   const migrate = db.transaction(() => {
-    for (const stmt of statements) {
-      db.prepare(stmt).run();
-    }
+    db.exec(sql);
   });
 
   try {

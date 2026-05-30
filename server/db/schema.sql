@@ -9,6 +9,12 @@
 --   - documents.file_path removed; replaced with docx_base64 (TEXT).
 --     Python returns .docx as base64 in JSON; Node.js stores and serves it.
 --
+-- v4.0.1 Fixes:
+--   - sessions.status CHECK: added 'answers' to enum (was missing).
+--   - questions: added display_order INTEGER column (required by Phase 3.2).
+--   - questions: renamed options_json → options TEXT to match AppForgeState
+--     Question TypedDict and API contracts in handover.md §5.2.
+--
 -- All CREATE TABLE statements are idempotent (IF NOT EXISTS).
 -- Managed by: server/db/migrate.js
 -- ============================================================
@@ -30,7 +36,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
   status        TEXT     NOT NULL DEFAULT 'idea'
-                         CHECK(status IN ('idea','overview','questions','diagrams','docs','codegen','complete')),
+                         CHECK(status IN ('idea','overview','questions','answers','diagrams','docs','codegen','complete')),
   idea_text     TEXT,
   overview_json TEXT,
   complexity    TEXT     CHECK(complexity IN ('simple','standard','complex')),
@@ -40,13 +46,14 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 
 -- Table 3: questions
 CREATE TABLE IF NOT EXISTS questions (
-  id          INTEGER  PRIMARY KEY AUTOINCREMENT,
-  session_id  TEXT     NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  question_id TEXT     NOT NULL,
-  category    TEXT,
-  question    TEXT     NOT NULL,
-  type        TEXT     NOT NULL CHECK(type IN ('text','choice')),
-  options_json TEXT
+  id            INTEGER  PRIMARY KEY AUTOINCREMENT,
+  session_id    TEXT     NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  question_id   TEXT     NOT NULL,
+  category      TEXT,
+  question      TEXT     NOT NULL,
+  type          TEXT     NOT NULL CHECK(type IN ('text','choice')),
+  options       TEXT,                -- JSON array string, nullable (choice type only)
+  display_order INTEGER              -- ordering for UI rendering (Phase 3.2)
 );
 
 -- Table 4: answers
